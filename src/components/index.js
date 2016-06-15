@@ -11,3 +11,6 @@ export InfoBar from './InfoBar/InfoBar';
 export MiniInfoBar from './MiniInfoBar/MiniInfoBar';
 export SurveyForm from './SurveyForm/SurveyForm';
 export WidgetForm from './WidgetForm/WidgetForm';
+export RTable from './Tabular/RTable';
+export Row from './Tabular/Row';
+export Cell from './Tabular/Cell';
