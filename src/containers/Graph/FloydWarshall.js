@@ -30,9 +30,13 @@ export default class FloydWarshall extends Component {
   render() {
     const styles = require('./FloydWarshall.scss');
     const rows = this.props.graph.adjacencyMatrix;
+    const length = rows.length;
+    const header = Array.from({length: length}, (val, key) => key);
+    console.log('header', header);
     return (
       <div>
         {rows.toString()}
+        {header.toString()}
         <br/>
         {rows.map( (row) => { return row.toString();})}
         <br/>
@@ -42,13 +46,22 @@ export default class FloydWarshall extends Component {
           });
         })}
         <br/>
-        <label>Number of vertices: <input defaultValue={this.props.graph.adjacencyMatrix.length} onChange={this.handleVertices} /></label>
+        <label>Number of vertices: <input value={length} onChange={this.handleVertices} /></label>
         <br/>
         <table><tbody>
+          <tr className={styles.headerRow}>
+            <td>k</td>
+            { header.map( (val)=> { return (<td>{val}</td>);})}
+          </tr>
+          <tr className={styles.headerRow}>
+            <td>i\j</td>
+            { header.map( (val)=> { return (<td>{val}</td>);})}
+          </tr>
           {rows.map( (row, rindex) => {
             const rowHandler = this.handleMatrix(rindex);
             return (
-              <tr key={rindex}><td>{row.toString()}</td>
+              <tr key={rindex}>
+                <td>{header[rindex]}</td>
                 { row.map( (col, cindex) => {
                   const colHandler = rowHandler(cindex);
                   return (
