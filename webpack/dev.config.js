@@ -62,7 +62,7 @@ reactTransform[1].transforms.push({
 });
 
 module.exports = {
-  devtool: 'inline-eval-cheap-source-map', //'inline-source-map',
+  devtool: 'inline-source-map', //'inline-eval-cheap-source-map', //'inline-source-map',
   context: path.resolve(__dirname, '..'),
   entry: {
     'main': [

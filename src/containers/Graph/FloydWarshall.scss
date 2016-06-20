@@ -6,6 +6,14 @@
     max-width: 20px;
     width: 20px;
   }
+
+  span {
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    width: 25px;
+    width: 25px;
+  }
+
   form {
     margin: 30px 0;
     :global(.btn) {
@@ -14,9 +22,20 @@
   }
 }
 
-.headerRow {
-  tr {
-    background-color: yellow;
+.header{
+  .row {
+    background-color: #abc;
     height: 50px;
   }
+}
+
+.current {
+  .col {
+    background-color: #555;
+    font-weight: bold;
+  }
+
+  .row {
+      background-color: #F00;
+    }
 }
