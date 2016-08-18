@@ -16,7 +16,8 @@ export default class FloydWarshall extends Component {
     incrementJ: PropTypes.func.isRequired,
     beginFW: PropTypes.func.isRequired,
     setMultiIncrementDelayMs: PropTypes.func.isRequired,
-    incrementTo: PropTypes.func.isRequired
+    incrementTo: PropTypes.func.isRequired,
+    setTo: PropTypes.func.isRequired
   };
 
   handleMatrix = (row) => (col) => (event) => {
@@ -55,16 +56,14 @@ export default class FloydWarshall extends Component {
     const canIncrement = !negativeCycle && !(fwk === last && fwi === last && fwj === last);
     const header = Array.from({length: length}, (val, key) => key);
     const defaultCellStyle = {width: '25px', height: '25px', textAlign: 'center'};
+    const highlightCellStyle = {...defaultCellStyle, backgroundColor: '#aaa'};
 
     return (
       <div>
-        <label>Number of vertices: <input type="number" min="1" max="50" maxLength="2" defaultValue={length} onChange={this.handleVertices} /></label>
+        <label>Number of vertices: <input type="number" min="1" max="50"
+          maxLength="2" defaultValue={length} onChange={this.handleVertices}/></label>
         <br/>
         <table><tbody>
-          <tr className={styles.header.row}>
-            <td>k</td>
-            { header.map( (val)=> { return (<td key={val}>{val}</td>);})}
-          </tr>
           <tr className={styles.headerRow}>
             <td>i\j</td>
             { header.map( (val)=> { return (<td key={val}>{val}</td>);})}
@@ -78,7 +77,8 @@ export default class FloydWarshall extends Component {
                   const colHandler = rowHandler(cindex);
                   return (
                     <td key={cindex}>
-                      <input style={{width: '25px'}} className={styles.adjMatrix} value={col} onChange={colHandler} readOnly={rindex === cindex}/>
+                      <input style={{width: '25px'}} className={styles.adjMatrix}
+                        value={col} onChange={colHandler} readOnly={rindex === cindex}/>
                     </td>
                   );
                 })}
@@ -100,27 +100,40 @@ export default class FloydWarshall extends Component {
             <tr className={styles.header.row}>
               <td>k</td>
               { header.map( (val)=> {
-                return (<td key={val}
-                style={val === fwk ? {...defaultCellStyle, backgroundColor: '#aaa'} : defaultCellStyle}>{val}</td>);
+                return (
+                  <td key={val} style={val === fwk ? highlightCellStyle : defaultCellStyle}>
+                    {val === fwk && val}
+                    {val !== fwk && <a onClick={() => {this.props.setTo(val, fwi, fwj, length);}}>{val}</a>}
+                  </td>
+                );
               })}
             </tr>
             <tr className={styles.header.row}>
               <td>i\j</td>
-              { header.map( (val)=> {
-                return (<td key={val}
-                style={val === fwj ? {...defaultCellStyle, backgroundColor: '#aaa'} : defaultCellStyle}>{val}</td>);
+              { header.map( (val) => {
+                return (val === fwj
+                      ? <td key={val} style={highlightCellStyle}>{val}</td>
+                      : <td key={val} style={defaultCellStyle}>
+                        <a onClick={() => {this.props.setTo(fwk, fwi, val, length);}}>{val}</a></td>
+                    );
               })}
             </tr>
           {fwMatrix.map( (row, rindex) => {
+            const val = header[rindex];
+            const rowStyle = val === fwi ? {backgroundColor: '#ccc'} : (val === fwk ? {backgroundColor: '#eee'} : {}); // eslint-disable-line
             return (
-              <tr key={rindex} style={header[rindex] === fwi ? {backgroundColor: '#ccc'} : {}}>
-                <td>{header[rindex]}</td>
+              <tr key={rindex} style={rowStyle}>
+                <td>
+                  {val === fwi && val}
+                  {val !== fwi && <a onClick={() => {this.props.setTo(fwk, val, fwj, length);}}>{val}</a>}
+                </td>
                 { row.map( (col, cindex) => {
                   const cellStyle = {...defaultCellStyle, border: '2px solid #555', borderStyle: 'inset'};
+                  if (cindex === fwk) cellStyle.backgroundColor = '#eee';
                   if (header[rindex] === fwi) cellStyle.backgroundColor = '#ccc';
                   if (cindex === fwj) cellStyle.backgroundColor = '#ccc';
                   if (cindex === fwj && header[rindex] === fwi) cellStyle.backgroundColor = '#aaa';
-                  if (cindex === fwj && header[rindex] === fwi && isUpdated) cellStyle.backgroundColor = '#eee';
+                  if (cindex === fwj && header[rindex] === fwi && isUpdated) cellStyle.backgroundColor = '#bbb';
                   if (cindex === fwk && header[rindex] === fwi && isUpdated) cellStyle.backgroundColor = '#999';
                   if (cindex === fwj && header[rindex] === fwk && isUpdated) cellStyle.backgroundColor = '#777';
                   return (
@@ -137,7 +150,7 @@ export default class FloydWarshall extends Component {
         <button type="button" className="btn btn.info" onClick={this.props.incrementJ} disabled={!canIncrement}>Increment J {fwj}</button>
         <button type="button" className="btn btn.info" onClick={() => {this.props.incrementTo(fwk, fwi + 1, fwj, length);}} disabled={!canIncrement}>Increment I {fwi}</button>
         <button type="button" className="btn btn.info" onClick={() => {this.props.incrementTo(fwk + 1, fwi, fwj, length);}} disabled={!canIncrement}>Increment K {fwk}</button>
-        <button type="button" className="btn btn.info" onClick={() => {this.props.incrementTo(last, last, last, length);}} disabled={!canIncrement}>Finish Floyd-Warshall</button>
+        <button type="button" className="btn btn.info" onClick={() => {this.props.setTo(last, last, last, length);}} disabled={!canIncrement}>Finish Floyd-Warshall</button>
         <input type="number" value={delay} onChange={(event) => this.props.setMultiIncrementDelayMs(event.target.value)}/>
         <button type="button" className="btn btn.info" onClick={this.props.beginFW}>Reset</button>
       </div>

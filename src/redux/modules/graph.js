@@ -45,18 +45,24 @@ function isGreaterThanSum(ij, ik, kj) {
   return ik !== null && kj !== null && (ij === null || ij > ik + kj);
 }
 
-function coordinatesToOrdinal(k, i, j, v) { //eslint-disable-line
-  return k * v * v + i * v + j;
+function coordinatesToOffset(k, i, j, v) { // eslint-disable-line
+  return ( k < 0 && i < 0 && j < 0) ? -1 : (k < 0 ? 0 : k) * v * v + (i < 0 ? 0 : i) * v + (j < 0 ? 0 : j);
 }
 
-function ordinalToCoordinates(ordinal, v) {
-  if (ordinal < 0) return {k: -1, i: -1, j: -1};
+function lastOffset(v) { // eslint-disable-line
+  return v * v * v - 1;
+}
+
+function offsetToCoordinates(offset, v) { //eslint-disable-line
+  if (offset < 0) return {k: -1, i: -1, j: -1};
   const vSquared = v * v;
-  const k = Math.floor(ordinal / vSquared)
-  const remainder = ordinal % vSquared;
-  const i = Math.floor(remainder / v);
-  const j = remainder % v;
-  return k < v ? {k, i, j} : {k: v - 1, i: v - 1, j: v -1 };
+  const k = Math.floor(offset / vSquared); //eslint-disable-line
+  const remainder = offset % vSquared;
+  const i = Math.floor(remainder / v); //eslint-disable-line
+  const j = remainder % v; //eslint-disable-line
+  const last = v - 1;
+  const fwComplete = k >= last && i === last && j === last;
+  return {k: fwComplete ? last : k, i, j, fwComplete};
 }
 
 
@@ -75,6 +81,8 @@ function floydWarshallReducer(state = initialState, action = {}) {
       };
     }
     case INCREMENT_J: {
+      const start = new Date();
+      console.log('INCREMENT_J starting at', start.getTime());
       let k = state.k; // eslint-disable-line
       let fwMatrix = state.fwMatrix;
       let v = fwMatrix.length; // eslint-disable-line
@@ -83,8 +91,8 @@ function floydWarshallReducer(state = initialState, action = {}) {
       let j = state.j; // eslint-disable-line
       let i = state.i; // eslint-disable-line
 
-      const ord = coordinatesToOrdinal(k, i, j, v);
-      const coords = ordinalToCoordinates(ord, v);
+      const ord = coordinatesToOffset(k, i, j, v);
+      const coords = offsetToCoordinates(ord, v);
       console.log(k, i, j, ord, coords);
 
       j = (j + 1) % v;
@@ -95,11 +103,13 @@ function floydWarshallReducer(state = initialState, action = {}) {
           if (k === v) {
             k = i = j = -1;
 
-            return {
+            const ret = {
               ...state,
               k, i, j,
               fwComplete: true
             };
+            console.log(INCREMENT_J, 'end complete', new Date().getTime() - start.getTime());
+            return ret;
           }
         }
       }
@@ -119,13 +129,16 @@ function floydWarshallReducer(state = initialState, action = {}) {
         });
       }
 
-      return {
+      const ret = {
         ...state,
         fwMatrix,
         negativeCycle,
         isUpdated,
-        k, i, j
+        k, i, j,
+        fwComplete: negativeCycle
       };
+      console.log(INCREMENT_J, 'end not complete', new Date().getTime() - start.getTime());
+      return ret;
     }
     default:
       return state;
@@ -221,23 +234,67 @@ export function setMultiIncrementDelayMs(delay) {
   };
 }
 
-export function incrementTo(toKp, toIp, toJp, lengthp) {
-  const adjust = toJp === -1 ? 1 : 0;
+function stateToOffset(state) {
+  const {k, i, j, fwMatrix} = state.graph;
+  return coordinatesToOffset(k, i, j, fwMatrix.length);
+}
+
+export function incrementTo(toK, toI, toJ, lengthp) {
+  /* const adjust = toJp === -1 ? 1 : 0;
   let toI = toIp + adjust + Math.floor(toJp / lengthp);
   let toJ = (toJp + adjust) % lengthp;
   let toK = toKp + adjust + Math.floor(toI / lengthp);
   toI %= lengthp;
   if (toK >= lengthp) {
     toJ = toI = toK = lengthp - 1;
-  }
-  const funcAction = (dispatch, getState) => {
+  }*/
+  // const noop = (dispatch, getState) => getState();
+
+  const targetOffset = coordinatesToOffset(toK, toI, toJ, lengthp);
+
+  const repeatingAction = (dispatch, getState) => {
     const state = getState();
-    const {k, i, j, fwComplete, multiIncrementDelayMs} = state.graph;
-    const length = state.graph.fwMatrix.length;
-    console.log('incrementTo ', toK, toI, toJ, k, i, j, fwComplete, multiIncrementDelayMs);
-    if (fwComplete || (k >= toK % length && i >= toI && j >= toJ)) return state;
-    setTimeout( function() {dispatch(funcAction);}, multiIncrementDelayMs);
+    const {fwMatrix, multiIncrementDelayMs, fwComplete} = state.graph;
+    const currentOffset = stateToOffset(state);
+
+    console.log('repeatingAction ', currentOffset, multiIncrementDelayMs);
+    if (fwComplete || currentOffset >= lastOffset(fwMatrix.length) || currentOffset >= targetOffset ) return null;
+    setTimeout( function() {dispatch(repeatingAction);}, multiIncrementDelayMs);
     return dispatch(incrementJ());
   };
-  return funcAction;
+
+  return (dispatch, getState) => {
+    const currentOffset = stateToOffset(getState());
+    if (currentOffset > targetOffset) dispatch(beginFW());
+    return repeatingAction(dispatch, getState);
+  };
+}
+
+export function setTo(toK, toI, toJ, lengthp) {
+  const targetOffset = coordinatesToOffset(toK, toI, toJ, lengthp);
+  console.log('setTo', toK, toI, toJ, lengthp, targetOffset, offsetToCoordinates(targetOffset));
+
+  return (dispatch, getState) => {
+    let state = getState();
+    let currentOffset = stateToOffset(state);
+    if (currentOffset > targetOffset) {
+      dispatch(beginFW());
+      state = getState();
+      currentOffset = stateToOffset(state);
+    }
+    let ret = null;
+    console.log('setTo looping ', targetOffset - currentOffset, new Date().getTime());
+    while (currentOffset < targetOffset && ! state.graph.fwComplete) {
+      const start = new Date();
+      console.log('setTo loop dispatching at', currentOffset, start.getTime());
+      ret = dispatch(incrementJ());
+
+      console.log('setTo dispatched', INCREMENT_J, new Date().getTime() - start.getTime());
+      state = getState();
+      currentOffset = stateToOffset(state);
+      console.log('setTo loop done', INCREMENT_J, currentOffset, new Date().getTime() - start.getTime());
+    }
+    console.log('setTo done looping ', targetOffset - currentOffset, new Date().getTime());
+    return ret;
+  };
 }
